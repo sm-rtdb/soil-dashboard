@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Soil Moisture Data</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="drawer">
+        <button id="toggleDrawer">☰</button>
+        <h2>User IDs</h2>
+        <ul id="userList"></ul>
+    </div>
+    <div class="main-content">
+        <div class="header">
+            <h1>Soil Moisture Data</h1>
+            <button id="downloadCsvBtn">Download CSV</button>
+        </div>
+        <div class="controls">
+            <button id="updateChartBtn">Update Charts</button>
+        </div>
+        <p id="status" class="status"></p>
+        <p id="authStatus" class="auth-status"></p>
+        <div id="chartsContainer"></div>
+    </div>
+    <script type="module" src="script.js"></script>
+</body>
+</html>
