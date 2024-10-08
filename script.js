@@ -90,6 +90,12 @@ function processDataForCharts(data) {
     return chartData;
 }
 
+// Function to get a color for each sensor
+function getColor(sensorIndex) {
+    const colors = ['#FF6384', '#36A2EB', '#FFCE56', '#4BC0C0', '#9966FF'];
+    return colors[sensorIndex - 1] || '#000000';
+}
+
 // Function to create/update charts
 function updateCharts(chartData, selectedUserId = null) {
     console.log("Updating charts...");
@@ -225,6 +231,21 @@ function downloadCSV(csvContent) {
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
+    }
+}
+
+// Function to update user list in drawer
+function updateUserList(data) {
+    const userList = document.getElementById('userList');
+    userList.innerHTML = '';
+    for (const userId in data) {
+        const li = document.createElement('li');
+        li.textContent = userId;
+        li.onclick = () => {
+            updateCharts(processDataForCharts(data), userId);
+            toggleDrawer(); // Close drawer after selection
+        };
+        userList.appendChild(li);
     }
 }
 
