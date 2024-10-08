@@ -91,6 +91,7 @@ function processDataForCharts(data) {
 }
 
 // Function to get a color for each sensor
+// Function to get a color for each sensor
 function getColor(sensorIndex) {
     const colors = ['#FF6384', '#36A2EB', '#FFCE56', '#4BC0C0', '#9966FF'];
     return colors[sensorIndex - 1] || '#000000';
