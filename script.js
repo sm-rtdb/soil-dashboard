@@ -71,7 +71,9 @@ function processDataForCharts(data) {
 
             for (const timestamp in userReadings) {
                 const reading = userReadings[timestamp];
-                const date = new Date(timestamp);
+                // Parse the new timestamp format
+                const [day, month, year, hour, minute] = timestamp.split('-');
+                const date = new Date(2000 + parseInt(year), parseInt(month) - 1, parseInt(day), parseInt(hour), parseInt(minute));
                 for (let i = 1; i <= 5; i++) {
                     chartData[userId][`sensor${i}`].push({
                         x: date,
@@ -130,7 +132,10 @@ function updateCharts(chartData, selectedUserId = null) {
                         x: {
                             type: 'time',
                             time: {
-                                unit: 'hour'
+                                unit: 'hour',
+                                displayFormats: {
+                                    hour: 'HH:mm'
+                                }
                             },
                             title: {
                                 display: true,
@@ -156,6 +161,21 @@ function updateCharts(chartData, selectedUserId = null) {
                                 size: 14,
                                 weight: 'normal'
                             }
+                        },
+                        tooltip: {
+                            callbacks: {
+                                title: function(context) {
+                                    const date = new Date(context[0].parsed.x);
+                                    return date.toLocaleString('en-US', { 
+                                        year: 'numeric', 
+                                        month: '2-digit', 
+                                        day: '2-digit', 
+                                        hour: '2-digit', 
+                                        minute: '2-digit', 
+                                        hour12: false 
+                                    });
+                                }
+                            }
                         }
                     }
                 }
@@ -164,27 +184,6 @@ function updateCharts(chartData, selectedUserId = null) {
     }
     
     console.log("Charts created");
-}
-
-// Function to get a color for each sensor
-function getColor(sensorIndex) {
-    const colors = ['#FF6384', '#36A2EB', '#FFCE56', '#4BC0C0', '#9966FF'];
-    return colors[sensorIndex - 1] || '#000000';
-}
-
-// Function to update user list in drawer
-function updateUserList(data) {
-    const userList = document.getElementById('userList');
-    userList.innerHTML = '';
-    for (const userId in data) {
-        const li = document.createElement('li');
-        li.textContent = userId;
-        li.onclick = () => {
-            updateCharts(processDataForCharts(data), userId);
-            toggleDrawer(); // Close drawer after selection
-        };
-        userList.appendChild(li);
-    }
 }
 
 // Function to convert data to CSV
@@ -196,8 +195,10 @@ function convertToCSV(data) {
         const readings = data[userId].readings;
         for (const timestamp in readings) {
             const reading = readings[timestamp];
+            const [day, month, year, hour, minute] = timestamp.split('-');
+            const formattedTimestamp = `${year}-${month}-${day} ${hour}:${minute}`;
             const row = [
-                timestamp,
+                formattedTimestamp,
                 userId,
                 reading.sensor1,
                 reading.sensor2,
