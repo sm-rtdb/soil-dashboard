@@ -1,0 +1,31 @@
+# Ignore node_modules directory
+node_modules/
+
+# Ignore log files
+*.log
+
+# Ignore .DS_Store files (macOS)
+.DS_Store
+
+# Ignore .env files (for environment variables)
+.env
+
+# Ignore IDE-specific files
+.vscode/
+.idea/
+
+# Ignore build output
+dist/
+build/
+
+# Ignore any local config files you might have
+config.local.js
+
+# Ignore Firebase config file if you decide to separate it
+firebase-config.js
+
+# Ignore any temporary files
+*.tmp
+
+# Ignore system files
+Thumbs.db 
