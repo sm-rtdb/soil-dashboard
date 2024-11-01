@@ -25,7 +25,7 @@ const sensorLabels = {
     sensor1: '2 Day Watering',
     sensor2: '4 Day Watering',
     sensor3: '6 Day Watering',
-    sensor4: '7 Day Watering',
+    sensor4: '8 Day Watering',
     sensor5: 'Control'
 };
 
@@ -210,7 +210,7 @@ function convertToCSV(data) {
         '2 Day Watering', 
         '4 Day Watering', 
         '6 Day Watering', 
-        '7 Day Watering', 
+        '8 Day Watering', 
         'Control'
     ];
     let csvContent = headers.join(',') + '\n';
