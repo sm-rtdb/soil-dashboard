@@ -20,6 +20,15 @@ const firebaseConfig = {
     measurementId: "G-T5SXGVQGSF"
 };
 
+// Sensor labels mapping
+const sensorLabels = {
+    sensor1: '2 Day Watering',
+    sensor2: '4 Day Watering',
+    sensor3: '6 Day Watering',
+    sensor4: '7 Day Watering',
+    sensor5: 'Control'
+};
+
 // Initialize Firebase
 const app = initializeApp(firebaseConfig);
 const analytics = getAnalytics(app);
@@ -71,7 +80,6 @@ function processDataForCharts(data) {
 
             for (const timestamp in userReadings) {
                 const reading = userReadings[timestamp];
-                // Parse the new timestamp format
                 const [day, month, year, hour, minute] = timestamp.split('-');
                 const date = new Date(2000 + parseInt(year), parseInt(month) - 1, parseInt(day), parseInt(hour), parseInt(minute));
                 for (let i = 1; i <= 5; i++) {
@@ -90,7 +98,6 @@ function processDataForCharts(data) {
     return chartData;
 }
 
-// Function to get a color for each sensor
 // Function to get a color for each sensor
 function getColor(sensorIndex) {
     const colors = ['#FF6384', '#36A2EB', '#FFCE56', '#4BC0C0', '#9966FF'];
@@ -121,13 +128,14 @@ function updateCharts(chartData, selectedUserId = null) {
             canvas.id = canvasId;
             chartWrapper.appendChild(canvas);
 
+            const sensorKey = `sensor${i}`;
             const ctx = canvas.getContext('2d');
             new Chart(ctx, {
                 type: 'line',
                 data: {
                     datasets: [{
-                        label: `Sensor ${i}`,
-                        data: chartData[userId][`sensor${i}`],
+                        label: sensorLabels[sensorKey],
+                        data: chartData[userId][sensorKey],
                         borderColor: getColor(i),
                         fill: false
                     }]
@@ -159,11 +167,12 @@ function updateCharts(chartData, selectedUserId = null) {
                     },
                     plugins: {
                         legend: {
-                            display: false
+                            display: true,
+                            position: 'top'
                         },
                         title: {
                             display: true,
-                            text: `Sensor ${i}`,
+                            text: sensorLabels[sensorKey],
                             font: {
                                 size: 14,
                                 weight: 'normal'
@@ -195,7 +204,15 @@ function updateCharts(chartData, selectedUserId = null) {
 
 // Function to convert data to CSV
 function convertToCSV(data) {
-    const headers = ['Timestamp', 'User ID', 'Sensor1', 'Sensor2', 'Sensor3', 'Sensor4', 'Sensor5'];
+    const headers = [
+        'Timestamp', 
+        'User ID', 
+        '2 Day Watering', 
+        '4 Day Watering', 
+        '6 Day Watering', 
+        '7 Day Watering', 
+        'Control'
+    ];
     let csvContent = headers.join(',') + '\n';
 
     for (const userId in data) {
@@ -263,10 +280,9 @@ function toggleDrawer() {
 }
 
 // Event listener for update charts button
-document.getElementById('updateChartBtn').addEventListener('click', async () => {
+document.querySelector('.controls').addEventListener('click', async () => {
     console.log("Update charts button clicked");
     const statusElement = document.getElementById('status');
-    statusElement.textContent = 'Updating charts...';
     try {
         await signInAnonymouslyFunc(); // Ensure user is signed in
         allData = await fetchData();
@@ -274,37 +290,42 @@ document.getElementById('updateChartBtn').addEventListener('click', async () => 
             const chartData = processDataForCharts(allData);
             updateCharts(chartData);
             updateUserList(allData);
-            statusElement.textContent = 'Charts updated!';
+            document.querySelector('.auth-status').textContent = 'Charts updated!';
         } else {
-            statusElement.textContent = 'No data available.';
+            document.querySelector('.auth-status').textContent = 'No data available.';
         }
     } catch (error) {
         console.error('Error:', error);
-        statusElement.textContent = 'An error occurred while updating the charts.';
+        document.querySelector('.auth-status').textContent = 'An error occurred while updating the charts.';
     }
 });
 
 // Event listener for download CSV button
-document.getElementById('downloadCsvBtn').addEventListener('click', async () => {
-    console.log("Download CSV button clicked");
-    const statusElement = document.getElementById('status');
-    try {
-        await signInAnonymouslyFunc(); // Ensure user is signed in
-        if (allData) {
-            const csvContent = convertToCSV(allData);
-            downloadCSV(csvContent);
-            statusElement.textContent = 'CSV downloaded!';
-        } else {
-            statusElement.textContent = 'No data available for download. Please update charts first.';
+document.querySelector('.header').addEventListener('click', async (e) => {
+    if (e.target.textContent.includes('Download CSV')) {
+        console.log("Download CSV button clicked");
+        try {
+            await signInAnonymouslyFunc(); // Ensure user is signed in
+            if (allData) {
+                const csvContent = convertToCSV(allData);
+                downloadCSV(csvContent);
+                document.querySelector('.auth-status').textContent = 'CSV downloaded!';
+            } else {
+                document.querySelector('.auth-status').textContent = 'No data available for download. Please update charts first.';
+            }
+        } catch (error) {
+            console.error('Error:', error);
+            document.querySelector('.auth-status').textContent = 'An error occurred while downloading the CSV.';
         }
-    } catch (error) {
-        console.error('Error:', error);
-        statusElement.textContent = 'An error occurred while downloading the CSV.';
     }
 });
 
 // Event listener for drawer toggle
-document.getElementById('toggleDrawer').addEventListener('click', toggleDrawer);
+document.querySelector('.drawer').addEventListener('click', (e) => {
+    if (e.target.textContent.includes('☰')) {
+        toggleDrawer();
+    }
+});
 
 // Initial charts update and drawer setup
 document.addEventListener('DOMContentLoaded', async () => {
@@ -317,25 +338,24 @@ document.addEventListener('DOMContentLoaded', async () => {
             updateCharts(chartData);
             updateUserList(allData);
         } else {
-            document.getElementById('status').textContent = 'No initial data available.';
+            document.querySelector('.auth-status').textContent = 'No initial data available.';
         }
     } catch (error) {
         console.error('Error:', error);
-        document.getElementById('status').textContent = 'An error occurred while initializing the charts.';
+        document.querySelector('.auth-status').textContent = 'An error occurred while initializing the charts.';
     }
 });
 
 // Monitor auth state changes
 onAuthStateChanged(auth, (user) => {
-    const authStatusElement = document.getElementById('authStatus');
     if (user) {
         console.log('User is signed in:', user.uid);
-        authStatusElement.textContent = 'Authenticated';
-        authStatusElement.style.color = '#2ecc71';
+        document.querySelector('.auth-status').textContent = 'Authenticated';
+        document.querySelector('.auth-status').style.color = '#2ecc71';
     } else {
         console.log('User is signed out');
-        authStatusElement.textContent = 'Not authenticated';
-        authStatusElement.style.color = '#e74c3c';
+        document.querySelector('.auth-status').textContent = 'Not authenticated';
+        document.querySelector('.auth-status').style.color = '#e74c3c';
     }
 });
 
