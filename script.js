@@ -255,6 +255,10 @@ function downloadCSV(csvContent) {
 // Function to update user list in drawer
 function updateUserList(data) {
     const userList = document.getElementById('userList');
+    if (!userList) {
+        console.error('User list element not found');
+        return;
+    }
     userList.innerHTML = '';
     for (const userId in data) {
         const li = document.createElement('li');
@@ -271,91 +275,101 @@ function updateUserList(data) {
 function toggleDrawer() {
     const drawer = document.querySelector('.drawer');
     const mainContent = document.querySelector('.main-content');
-    drawer.classList.toggle('open');
-    if (drawer.classList.contains('open')) {
-        mainContent.style.marginLeft = '200px';
-    } else {
-        mainContent.style.marginLeft = '50px';
+    if (drawer && mainContent) {
+        drawer.classList.toggle('open');
+        mainContent.style.marginLeft = drawer.classList.contains('open') ? '200px' : '50px';
     }
 }
 
-// Event listener for update charts button
-document.querySelector('.controls').addEventListener('click', async () => {
-    console.log("Update charts button clicked");
-    const statusElement = document.getElementById('status');
-    try {
-        await signInAnonymouslyFunc(); // Ensure user is signed in
-        allData = await fetchData();
-        if (allData) {
-            const chartData = processDataForCharts(allData);
-            updateCharts(chartData);
-            updateUserList(allData);
-            document.querySelector('.auth-status').textContent = 'Charts updated!';
-        } else {
-            document.querySelector('.auth-status').textContent = 'No data available.';
-        }
-    } catch (error) {
-        console.error('Error:', error);
-        document.querySelector('.auth-status').textContent = 'An error occurred while updating the charts.';
-    }
-});
-
-// Event listener for download CSV button
-document.querySelector('.header').addEventListener('click', async (e) => {
-    if (e.target.textContent.includes('Download CSV')) {
-        console.log("Download CSV button clicked");
-        try {
-            await signInAnonymouslyFunc(); // Ensure user is signed in
-            if (allData) {
-                const csvContent = convertToCSV(allData);
-                downloadCSV(csvContent);
-                document.querySelector('.auth-status').textContent = 'CSV downloaded!';
-            } else {
-                document.querySelector('.auth-status').textContent = 'No data available for download. Please update charts first.';
-            }
-        } catch (error) {
-            console.error('Error:', error);
-            document.querySelector('.auth-status').textContent = 'An error occurred while downloading the CSV.';
-        }
-    }
-});
-
-// Event listener for drawer toggle
-document.querySelector('.drawer').addEventListener('click', (e) => {
-    if (e.target.textContent.includes('☰')) {
-        toggleDrawer();
-    }
-});
-
-// Initial charts update and drawer setup
+// Event listeners setup after DOM is loaded
 document.addEventListener('DOMContentLoaded', async () => {
-    console.log("DOM content loaded, initializing charts...");
+    console.log("DOM content loaded, setting up event listeners...");
+
+    // Update charts button
+    const updateButton = document.querySelector('.controls');
+    if (updateButton) {
+        updateButton.addEventListener('click', async () => {
+            console.log("Update charts button clicked");
+            try {
+                await signInAnonymouslyFunc();
+                allData = await fetchData();
+                if (allData) {
+                    const chartData = processDataForCharts(allData);
+                    updateCharts(chartData);
+                    updateUserList(allData);
+                    const authStatus = document.querySelector('.auth-status');
+                    if (authStatus) authStatus.textContent = 'Charts updated!';
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                const authStatus = document.querySelector('.auth-status');
+                if (authStatus) authStatus.textContent = 'Error updating charts.';
+            }
+        });
+    }
+
+    // Download CSV button
+    const headerElement = document.querySelector('.header');
+    if (headerElement) {
+        headerElement.addEventListener('click', async (e) => {
+            if (e.target.textContent.includes('Download CSV')) {
+                console.log("Download CSV button clicked");
+                try {
+                    await signInAnonymouslyFunc();
+                    if (allData) {
+                        const csvContent = convertToCSV(allData);
+                        downloadCSV(csvContent);
+                        const authStatus = document.querySelector('.auth-status');
+                        if (authStatus) authStatus.textContent = 'CSV downloaded!';
+                    }
+                } catch (error) {
+                    console.error('Error:', error);
+                    const authStatus = document.querySelector('.auth-status');
+                    if (authStatus) authStatus.textContent = 'Error downloading CSV.';
+                }
+            }
+        });
+    }
+
+    // Drawer toggle
+    const drawer = document.querySelector('.drawer');
+    if (drawer) {
+        drawer.addEventListener('click', (e) => {
+            if (e.target.textContent.includes('☰')) {
+                toggleDrawer();
+            }
+        });
+    }
+
+    // Initial load
     try {
-        await signInAnonymouslyFunc(); // Sign in anonymously when the page loads
+        await signInAnonymouslyFunc();
         allData = await fetchData();
         if (allData) {
             const chartData = processDataForCharts(allData);
             updateCharts(chartData);
             updateUserList(allData);
-        } else {
-            document.querySelector('.auth-status').textContent = 'No initial data available.';
         }
     } catch (error) {
-        console.error('Error:', error);
-        document.querySelector('.auth-status').textContent = 'An error occurred while initializing the charts.';
+        console.error('Error during initial load:', error);
+        const authStatus = document.querySelector('.auth-status');
+        if (authStatus) authStatus.textContent = 'Error loading initial data.';
     }
 });
 
 // Monitor auth state changes
 onAuthStateChanged(auth, (user) => {
+    const authStatus = document.querySelector('.auth-status');
+    if (!authStatus) return;
+
     if (user) {
         console.log('User is signed in:', user.uid);
-        document.querySelector('.auth-status').textContent = 'Authenticated';
-        document.querySelector('.auth-status').style.color = '#2ecc71';
+        authStatus.textContent = 'Authenticated';
+        authStatus.style.color = '#2ecc71';
     } else {
         console.log('User is signed out');
-        document.querySelector('.auth-status').textContent = 'Not authenticated';
-        document.querySelector('.auth-status').style.color = '#e74c3c';
+        authStatus.textContent = 'Not authenticated';
+        authStatus.style.color = '#e74c3c';
     }
 });
 
