@@ -1,4 +1,13 @@
-// Add this mapping at the top of your file, after the firebaseConfig
+// First, the HTML structure should be updated to include an ul element:
+const drawerHtml = `
+<div class="drawer">
+    <button id="toggleDrawer">☰</button>
+    <h2>User IDs</h2>
+    <ul id="userList"></ul>
+</div>
+`;
+
+// Add this mapping at the top of your file
 const userIdToBox = {
     'lb0NH2Pl7AQOjjFyxi94kMkZ2YB3': 'Box 1',
     '6LWt9fPF3gWtY2Wu2AdRQk41TF43': 'Box 2',
@@ -10,115 +19,30 @@ const userIdToBox = {
     'x71jKqGf3ZOrpuBNb3PqXhQxY5n2': 'Box 8'
 };
 
-// Modify the updateCharts function
-function updateCharts(chartData, selectedUserId = null) {
-    console.log("Updating charts...");
-    const chartsContainer = document.getElementById('chartsContainer');
-    chartsContainer.innerHTML = ''; // Clear existing charts
-
-    const users = selectedUserId ? [selectedUserId] : Object.keys(chartData);
-
-    for (const userId of users) {
-        const userContainer = document.createElement('div');
-        userContainer.className = 'user-container';
-        const boxNumber = userIdToBox[userId] || userId; // Fallback to userId if not in mapping
-        userContainer.innerHTML = `<h2>${boxNumber}</h2>`; // Display box number instead of userId
-        chartsContainer.appendChild(userContainer);
-
-        // Rest of the chart creation code remains the same
-        for (let i = 1; i <= 5; i++) {
-            const chartWrapper = document.createElement('div');
-            chartWrapper.className = 'chart-wrapper';
-            userContainer.appendChild(chartWrapper);
-
-            const canvasId = `chart-${userId}-sensor${i}`;
-            const canvas = document.createElement('canvas');
-            canvas.id = canvasId;
-            chartWrapper.appendChild(canvas);
-
-            const sensorKey = `sensor${i}`;
-            const ctx = canvas.getContext('2d');
-            new Chart(ctx, {
-                type: 'line',
-                data: {
-                    datasets: [{
-                        label: sensorLabels[sensorKey],
-                        data: chartData[userId][sensorKey],
-                        borderColor: getColor(i),
-                        fill: false
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    scales: {
-                        x: {
-                            type: 'time',
-                            time: {
-                                unit: 'hour',
-                                displayFormats: {
-                                    hour: 'HH:mm'
-                                }
-                            },
-                            title: {
-                                display: true,
-                                text: 'Time'
-                            }
-                        },
-                        y: {
-                            beginAtZero: true,
-                            title: {
-                                display: true,
-                                text: 'Moisture Level'
-                            }
-                        }
-                    },
-                    plugins: {
-                        legend: {
-                            display: true,
-                            position: 'top'
-                        },
-                        title: {
-                            display: true,
-                            text: sensorLabels[sensorKey],
-                            font: {
-                                size: 14,
-                                weight: 'normal'
-                            }
-                        },
-                        tooltip: {
-                            callbacks: {
-                                title: function(context) {
-                                    const date = new Date(context[0].parsed.x);
-                                    return date.toLocaleString('en-US', { 
-                                        year: 'numeric', 
-                                        month: '2-digit', 
-                                        day: '2-digit', 
-                                        hour: '2-digit', 
-                                        minute: '2-digit', 
-                                        hour12: false 
-                                    });
-                                }
-                            }
-                        }
-                    }
-                }
-            });
-        }
-    }
-    
-    console.log("Charts created");
-}
-
-// Modify the updateUserList function
+// Modified updateUserList function
 function updateUserList(data) {
-    const userList = document.getElementById('userList');
-    if (!userList) {
-        console.error('User list element not found');
+    // Find the container that holds the user IDs
+    const userListContainer = document.querySelector('.drawer');
+    if (!userListContainer) {
+        console.error('Drawer container not found');
         return;
     }
+
+    // Clear existing content
+    const existingHeading = userListContainer.querySelector('h2');
+    if (existingHeading) {
+        existingHeading.textContent = 'Box Numbers';  // Update the heading
+    }
+
+    // Create or get the userList element
+    let userList = userListContainer.querySelector('ul');
+    if (!userList) {
+        userList = document.createElement('ul');
+        userList.id = 'userList';
+        userListContainer.appendChild(userList);
+    }
     userList.innerHTML = '';
-    
+
     // Sort users by box number
     const sortedUsers = Object.keys(data).sort((a, b) => {
         const boxA = parseInt(userIdToBox[a]?.split(' ')[1]) || Infinity;
@@ -126,51 +50,34 @@ function updateUserList(data) {
         return boxA - boxB;
     });
 
+    // Add each user to the list
     for (const userId of sortedUsers) {
         const li = document.createElement('li');
-        const boxNumber = userIdToBox[userId] || userId; // Fallback to userId if not in mapping
+        const boxNumber = userIdToBox[userId] || userId;
         li.textContent = boxNumber;
+        li.style.cursor = 'pointer';
         li.onclick = () => {
             updateCharts(processDataForCharts(data), userId);
-            toggleDrawer(); // Close drawer after selection
+            toggleDrawer();
         };
         userList.appendChild(li);
     }
 }
 
-// Modify the convertToCSV function to use box numbers
-function convertToCSV(data) {
-    const headers = [
-        'Timestamp', 
-        'Box Number', 
-        '2 Day Watering', 
-        '4 Day Watering', 
-        '6 Day Watering', 
-        '8 Day Watering', 
-        'Control'
-    ];
-    let csvContent = headers.join(',') + '\n';
-
-    for (const userId in data) {
-        const readings = data[userId].readings;
-        const boxNumber = userIdToBox[userId] || userId; // Fallback to userId if not in mapping
-        
-        for (const timestamp in readings) {
-            const reading = readings[timestamp];
-            const [day, month, year, hour, minute] = timestamp.split('-');
-            const formattedTimestamp = `${year}-${month}-${day} ${hour}:${minute}`;
-            const row = [
-                formattedTimestamp,
-                boxNumber,
-                reading.sensor1,
-                reading.sensor2,
-                reading.sensor3,
-                reading.sensor4,
-                reading.sensor5
-            ];
-            csvContent += row.join(',') + '\n';
+// Ensure this is added to your DOMContentLoaded event handler
+document.addEventListener('DOMContentLoaded', async () => {
+    console.log("DOM content loaded, initializing...");
+    
+    try {
+        await signInAnonymouslyFunc();
+        allData = await fetchData();
+        if (allData) {
+            console.log("Data fetched, updating user list...");
+            updateUserList(allData); // Make sure this is called
+            const chartData = processDataForCharts(allData);
+            updateCharts(chartData);
         }
+    } catch (error) {
+        console.error('Error during initialization:', error);
     }
-
-    return csvContent;
-}
+});
