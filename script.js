@@ -4,26 +4,9 @@ import { getAnalytics } from "https://www.gstatic.com/firebasejs/10.14.0/firebas
 import { getDatabase, ref, get } from "https://www.gstatic.com/firebasejs/10.14.0/firebase-database.js";
 import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.14.0/firebase-auth.js";
 
-// User ID mapping with Box labels
-const userIdMapping = {
-    'lb0NH2Pl7AQOjjFyxi94kMkZ2YB3': 'Box 1',
-    '6LWt9fPF3gWtY2Wu2AdRQk41TF43': 'Box 2',
-    'Xbnl5dadNoXiTVefhPfoq6e8w3D3': 'Box 3',
-    'zCLIFfSHaYaHXpGTNytbnZdYlFH2': 'Box 4',
-    'oGjSNfSbqWfVYyvdqdm10i8vmry2': 'Box 5',
-    'yOwqoSHy2lWZIrwXk7bNZkVQdD62': 'Box 6',
-    'li8FvgAgJ5dj3vqsjwIGJiZUoR52': 'Box 7',
-    'x71jKqGf3ZOrpuBNb3PqXhQxY5n2': 'Box 8'
-};
-
-// Sensor labels mapping
-const sensorLabels = {
-    sensor1: '2 Day Watering',
-    sensor2: '4 Day Watering',
-    sensor3: '6 Day Watering',
-    sensor4: '8 Day Watering',
-    sensor5: 'Control'
-};
+// Import Chart.js and the date adapter
+import 'https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js';
+import 'https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns@3.0.0/dist/chartjs-adapter-date-fns.bundle.min.js';
 
 // Your web app's Firebase configuration
 const firebaseConfig = {
@@ -37,11 +20,22 @@ const firebaseConfig = {
     measurementId: "G-T5SXGVQGSF"
 };
 
+// Sensor labels mapping
+const sensorLabels = {
+    sensor1: '2 Day Watering',
+    sensor2: '4 Day Watering',
+    sensor3: '6 Day Watering',
+    sensor4: '8 Day Watering',
+    sensor5: 'Control'
+};
+
 // Initialize Firebase
 const app = initializeApp(firebaseConfig);
 const analytics = getAnalytics(app);
 const database = getDatabase(app);
 const auth = getAuth(app);
+
+console.log("Firebase initialized");
 
 let allData = null;
 
@@ -63,7 +57,7 @@ async function fetchData() {
     try {
         const snapshot = await get(dbRef);
         const data = snapshot.val();
-        console.log("Data fetched successfully");
+        console.log("Data fetched successfully:", data);
         return data;
     } catch (error) {
         console.error("Error fetching data:", error);
@@ -73,9 +67,11 @@ async function fetchData() {
 
 // Function to process data for charts
 function processDataForCharts(data) {
+    console.log("Processing data for charts...");
     const chartData = {};
 
     for (const userId in data) {
+        console.log("Processing data for user:", userId);
         const userReadings = data[userId].readings;
         if (userReadings) {
             chartData[userId] = {
@@ -86,7 +82,6 @@ function processDataForCharts(data) {
                 const reading = userReadings[timestamp];
                 const [day, month, year, hour, minute] = timestamp.split('-');
                 const date = new Date(2000 + parseInt(year), parseInt(month) - 1, parseInt(day), parseInt(hour), parseInt(minute));
-                
                 for (let i = 1; i <= 5; i++) {
                     chartData[userId][`sensor${i}`].push({
                         x: date,
@@ -94,34 +89,33 @@ function processDataForCharts(data) {
                     });
                 }
             }
-
-            // Sort data points by time for each sensor
-            Object.keys(chartData[userId]).forEach(sensor => {
-                chartData[userId][sensor].sort((a, b) => a.x - b.x);
-            });
+        } else {
+            console.log("No readings found for user:", userId);
         }
     }
-    
+
+    console.log("Processed chart data:", chartData);
     return chartData;
 }
 
-// Function to get color for charts
+// Function to get a color for each sensor
 function getColor(sensorIndex) {
     const colors = ['#FF6384', '#36A2EB', '#FFCE56', '#4BC0C0', '#9966FF'];
     return colors[sensorIndex - 1] || '#000000';
 }
 
-// Function to update charts
+// Function to create/update charts
 function updateCharts(chartData, selectedUserId = null) {
+    console.log("Updating charts...");
     const chartsContainer = document.getElementById('chartsContainer');
-    chartsContainer.innerHTML = '';
+    chartsContainer.innerHTML = ''; // Clear existing charts
 
     const users = selectedUserId ? [selectedUserId] : Object.keys(chartData);
 
     for (const userId of users) {
         const userContainer = document.createElement('div');
         userContainer.className = 'user-container';
-        userContainer.innerHTML = `<h2>${userIdMapping[userId]}</h2>`;
+        userContainer.innerHTML = `<h2>User: ${userId}</h2>`;
         chartsContainer.appendChild(userContainer);
 
         for (let i = 1; i <= 5; i++) {
@@ -129,17 +123,19 @@ function updateCharts(chartData, selectedUserId = null) {
             chartWrapper.className = 'chart-wrapper';
             userContainer.appendChild(chartWrapper);
 
+            const canvasId = `chart-${userId}-sensor${i}`;
             const canvas = document.createElement('canvas');
-            canvas.id = `chart-${userId}-sensor${i}`;
+            canvas.id = canvasId;
             chartWrapper.appendChild(canvas);
 
+            const sensorKey = `sensor${i}`;
             const ctx = canvas.getContext('2d');
             new Chart(ctx, {
                 type: 'line',
                 data: {
                     datasets: [{
-                        label: sensorLabels[`sensor${i}`],
-                        data: chartData[userId][`sensor${i}`],
+                        label: sensorLabels[sensorKey],
+                        data: chartData[userId][sensorKey],
                         borderColor: getColor(i),
                         fill: false
                     }]
@@ -174,14 +170,26 @@ function updateCharts(chartData, selectedUserId = null) {
                             display: true,
                             position: 'top'
                         },
+                        title: {
+                            display: true,
+                            text: sensorLabels[sensorKey],
+                            font: {
+                                size: 14,
+                                weight: 'normal'
+                            }
+                        },
                         tooltip: {
                             callbacks: {
                                 title: function(context) {
-                                    const date = new Date(context[0].raw.x);
-                                    return date.toLocaleString();
-                                },
-                                label: function(context) {
-                                    return `Moisture: ${context.raw.y.toFixed(2)}`;
+                                    const date = new Date(context[0].parsed.x);
+                                    return date.toLocaleString('en-US', { 
+                                        year: 'numeric', 
+                                        month: '2-digit', 
+                                        day: '2-digit', 
+                                        hour: '2-digit', 
+                                        minute: '2-digit', 
+                                        hour12: false 
+                                    });
                                 }
                             }
                         }
@@ -190,45 +198,32 @@ function updateCharts(chartData, selectedUserId = null) {
             });
         }
     }
-}
-
-// Function to update user list in drawer
-function updateUserList(data) {
-    const userList = document.getElementById('userList');
-    userList.innerHTML = '';
     
-    for (const userId in data) {
-        const li = document.createElement('li');
-        li.textContent = userIdMapping[userId];
-        li.onclick = () => {
-            updateCharts(processDataForCharts(data), userId);
-            toggleDrawer();
-        };
-        userList.appendChild(li);
-    }
+    console.log("Charts created");
 }
 
-// Function to toggle drawer
-function toggleDrawer() {
-    const drawer = document.querySelector('.drawer');
-    const mainContent = document.querySelector('.main-content');
-    drawer.classList.toggle('open');
-    mainContent.style.marginLeft = drawer.classList.contains('open') ? '200px' : '50px';
-}
-
-// Function to convert data to CSV and download
-function downloadCSV(data) {
-    let csvContent = 'Timestamp,User ID,2 Day Watering,4 Day Watering,6 Day Watering,8 Day Watering,Control\n';
+// Function to convert data to CSV
+function convertToCSV(data) {
+    const headers = [
+        'Timestamp', 
+        'User ID', 
+        '2 Day Watering', 
+        '4 Day Watering', 
+        '6 Day Watering', 
+        '8 Day Watering', 
+        'Control'
+    ];
+    let csvContent = headers.join(',') + '\n';
 
     for (const userId in data) {
         const readings = data[userId].readings;
         for (const timestamp in readings) {
             const reading = readings[timestamp];
             const [day, month, year, hour, minute] = timestamp.split('-');
-            const formattedTimestamp = `20${year}-${month}-${day} ${hour}:${minute}`;
+            const formattedTimestamp = `${year}-${month}-${day} ${hour}:${minute}`;
             const row = [
                 formattedTimestamp,
-                userIdMapping[userId],
+                userId,
                 reading.sensor1,
                 reading.sensor2,
                 reading.sensor3,
@@ -239,60 +234,112 @@ function downloadCSV(data) {
         }
     }
 
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-    const link = document.createElement('a');
-    const url = URL.createObjectURL(blob);
-    link.setAttribute('href', url);
-    link.setAttribute('download', 'soil_moisture_data.csv');
-    link.style.visibility = 'hidden';
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+    return csvContent;
 }
 
-// Event listeners setup
-document.addEventListener('DOMContentLoaded', async () => {
-    console.log("Setting up event listeners...");
+// Function to trigger download
+function downloadCSV(csvContent) {
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    if (link.download !== undefined) {
+        const url = URL.createObjectURL(blob);
+        link.setAttribute('href', url);
+        link.setAttribute('download', 'soil_moisture_data.csv');
+        link.style.visibility = 'hidden';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+    }
+}
 
-    // Drawer toggle
-    const drawerButton = document.querySelector('.drawer');
-    drawerButton.addEventListener('click', (e) => {
-        if (e.target.textContent.includes('☰')) {
-            toggleDrawer();
-        }
-    });
+// Function to update user list in drawer
+function updateUserList(data) {
+    const userList = document.getElementById('userList');
+    if (!userList) {
+        console.error('User list element not found');
+        return;
+    }
+    userList.innerHTML = '';
+    for (const userId in data) {
+        const li = document.createElement('li');
+        li.textContent = userId;
+        li.onclick = () => {
+            updateCharts(processDataForCharts(data), userId);
+            toggleDrawer(); // Close drawer after selection
+        };
+        userList.appendChild(li);
+    }
+}
+
+// Function to toggle drawer
+function toggleDrawer() {
+    const drawer = document.querySelector('.drawer');
+    const mainContent = document.querySelector('.main-content');
+    if (drawer && mainContent) {
+        drawer.classList.toggle('open');
+        mainContent.style.marginLeft = drawer.classList.contains('open') ? '200px' : '50px';
+    }
+}
+
+// Event listeners setup after DOM is loaded
+document.addEventListener('DOMContentLoaded', async () => {
+    console.log("DOM content loaded, setting up event listeners...");
 
     // Update charts button
-    const updateButton = document.querySelector('.controls button');
-    updateButton.addEventListener('click', async () => {
-        try {
-            await signInAnonymouslyFunc();
-            allData = await fetchData();
-            if (allData) {
-                const chartData = processDataForCharts(allData);
-                updateCharts(chartData);
-                updateUserList(allData);
+    const updateButton = document.querySelector('.controls');
+    if (updateButton) {
+        updateButton.addEventListener('click', async () => {
+            console.log("Update charts button clicked");
+            try {
+                await signInAnonymouslyFunc();
+                allData = await fetchData();
+                if (allData) {
+                    const chartData = processDataForCharts(allData);
+                    updateCharts(chartData);
+                    updateUserList(allData);
+                    const authStatus = document.querySelector('.auth-status');
+                    if (authStatus) authStatus.textContent = 'Charts updated!';
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                const authStatus = document.querySelector('.auth-status');
+                if (authStatus) authStatus.textContent = 'Error updating charts.';
             }
-        } catch (error) {
-            console.error('Error:', error);
-        }
-    });
+        });
+    }
 
     // Download CSV button
-    const downloadButton = document.querySelector('.header button');
-    downloadButton.addEventListener('click', async () => {
-        try {
-            await signInAnonymouslyFunc();
-            if (!allData) {
-                allData = await fetchData();
+    const headerElement = document.querySelector('.header');
+    if (headerElement) {
+        headerElement.addEventListener('click', async (e) => {
+            if (e.target.textContent.includes('Download CSV')) {
+                console.log("Download CSV button clicked");
+                try {
+                    await signInAnonymouslyFunc();
+                    if (allData) {
+                        const csvContent = convertToCSV(allData);
+                        downloadCSV(csvContent);
+                        const authStatus = document.querySelector('.auth-status');
+                        if (authStatus) authStatus.textContent = 'CSV downloaded!';
+                    }
+                } catch (error) {
+                    console.error('Error:', error);
+                    const authStatus = document.querySelector('.auth-status');
+                    if (authStatus) authStatus.textContent = 'Error downloading CSV.';
+                }
             }
-            if (allData) {
-                downloadCSV(allData);
+        });
+    }
+
+    // Drawer toggle
+    const drawer = document.querySelector('.drawer');
+    if (drawer) {
+        drawer.addEventListener('click', (e) => {
+            if (e.target.textContent.includes('☰')) {
+                toggleDrawer();
             }
-        } catch (error) {
-            console.error('Error:', error);
-        }
-    });
+        });
+    }
 
     // Initial load
     try {
@@ -305,21 +352,25 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
     } catch (error) {
         console.error('Error during initial load:', error);
+        const authStatus = document.querySelector('.auth-status');
+        if (authStatus) authStatus.textContent = 'Error loading initial data.';
     }
 });
 
-// Auth state monitoring
+// Monitor auth state changes
 onAuthStateChanged(auth, (user) => {
     const authStatus = document.querySelector('.auth-status');
     if (!authStatus) return;
 
     if (user) {
         console.log('User is signed in:', user.uid);
-        authStatus.textContent = 'Connected to database';
+        authStatus.textContent = 'Authenticated';
         authStatus.style.color = '#2ecc71';
     } else {
         console.log('User is signed out');
-        authStatus.textContent = 'Disconnected';
+        authStatus.textContent = 'Not authenticated';
         authStatus.style.color = '#e74c3c';
     }
 });
+
+console.log("Script loaded");
