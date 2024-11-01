@@ -1,110 +1,16 @@
-// Import the functions you need from the SDKs you need
-import { initializeApp } from "https://www.gstatic.com/firebasejs/10.14.0/firebase-app.js";
-import { getAnalytics } from "https://www.gstatic.com/firebasejs/10.14.0/firebase-analytics.js";
-import { getDatabase, ref, get } from "https://www.gstatic.com/firebasejs/10.14.0/firebase-database.js";
-import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.14.0/firebase-auth.js";
-
-// Import Chart.js and the date adapter
-import 'https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js';
-import 'https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns@3.0.0/dist/chartjs-adapter-date-fns.bundle.min.js';
-
-// Your web app's Firebase configuration
-const firebaseConfig = {
-    apiKey: "AIzaSyDEG5Qv9aSZi_CQO4LVg2DvrfEm2N0DTEs",
-    authDomain: "coffee-soilmoisture.firebaseapp.com",
-    databaseURL: "https://coffee-soilmoisture-default-rtdb.asia-southeast1.firebasedatabase.app",
-    projectId: "coffee-soilmoisture",
-    storageBucket: "coffee-soilmoisture.appspot.com",
-    messagingSenderId: "461967846771",
-    appId: "1:461967846771:web:c7dc054877ea3cc2756906",
-    measurementId: "G-T5SXGVQGSF"
+// Add this mapping at the top of your file, after the firebaseConfig
+const userIdToBox = {
+    'lb0NH2Pl7AQOjjFyxi94kMkZ2YB3': 'Box 1',
+    '6LWt9fPF3gWtY2Wu2AdRQk41TF43': 'Box 2',
+    'Xbnl5dadNoXiTVefhPfoq6e8w3D3': 'Box 3',
+    'zCLIFfSHaYaHXpGTNytbnZdYlFH2': 'Box 4',
+    'oGjSNfSbqWfVYyvdqdm10i8vmry2': 'Box 5',
+    'yOwqoSHy2lWZIrwXk7bNZkVQdD62': 'Box 6',
+    'li8FvgAgJ5dj3vqsjwIGJiZUoR52': 'Box 7',
+    'x71jKqGf3ZOrpuBNb3PqXhQxY5n2': 'Box 8'
 };
 
-// Sensor labels mapping
-const sensorLabels = {
-    sensor1: '2 Day Watering',
-    sensor2: '4 Day Watering',
-    sensor3: '6 Day Watering',
-    sensor4: '8 Day Watering',
-    sensor5: 'Control'
-};
-
-// Initialize Firebase
-const app = initializeApp(firebaseConfig);
-const analytics = getAnalytics(app);
-const database = getDatabase(app);
-const auth = getAuth(app);
-
-console.log("Firebase initialized");
-
-let allData = null;
-
-// Function to sign in anonymously
-function signInAnonymouslyFunc() {
-    return signInAnonymously(auth)
-        .then(() => {
-            console.log("Signed in anonymously");
-        })
-        .catch((error) => {
-            console.error("Error signing in anonymously:", error);
-        });
-}
-
-// Function to fetch data from Firebase
-async function fetchData() {
-    console.log("Fetching data from Firebase...");
-    const dbRef = ref(database, 'UsersData');
-    try {
-        const snapshot = await get(dbRef);
-        const data = snapshot.val();
-        console.log("Data fetched successfully:", data);
-        return data;
-    } catch (error) {
-        console.error("Error fetching data:", error);
-        throw error;
-    }
-}
-
-// Function to process data for charts
-function processDataForCharts(data) {
-    console.log("Processing data for charts...");
-    const chartData = {};
-
-    for (const userId in data) {
-        console.log("Processing data for user:", userId);
-        const userReadings = data[userId].readings;
-        if (userReadings) {
-            chartData[userId] = {
-                sensor1: [], sensor2: [], sensor3: [], sensor4: [], sensor5: []
-            };
-
-            for (const timestamp in userReadings) {
-                const reading = userReadings[timestamp];
-                const [day, month, year, hour, minute] = timestamp.split('-');
-                const date = new Date(2000 + parseInt(year), parseInt(month) - 1, parseInt(day), parseInt(hour), parseInt(minute));
-                for (let i = 1; i <= 5; i++) {
-                    chartData[userId][`sensor${i}`].push({
-                        x: date,
-                        y: parseFloat(reading[`sensor${i}`]) || 0
-                    });
-                }
-            }
-        } else {
-            console.log("No readings found for user:", userId);
-        }
-    }
-
-    console.log("Processed chart data:", chartData);
-    return chartData;
-}
-
-// Function to get a color for each sensor
-function getColor(sensorIndex) {
-    const colors = ['#FF6384', '#36A2EB', '#FFCE56', '#4BC0C0', '#9966FF'];
-    return colors[sensorIndex - 1] || '#000000';
-}
-
-// Function to create/update charts
+// Modify the updateCharts function
 function updateCharts(chartData, selectedUserId = null) {
     console.log("Updating charts...");
     const chartsContainer = document.getElementById('chartsContainer');
@@ -115,9 +21,11 @@ function updateCharts(chartData, selectedUserId = null) {
     for (const userId of users) {
         const userContainer = document.createElement('div');
         userContainer.className = 'user-container';
-        userContainer.innerHTML = `<h2>User: ${userId}</h2>`;
+        const boxNumber = userIdToBox[userId] || userId; // Fallback to userId if not in mapping
+        userContainer.innerHTML = `<h2>${boxNumber}</h2>`; // Display box number instead of userId
         chartsContainer.appendChild(userContainer);
 
+        // Rest of the chart creation code remains the same
         for (let i = 1; i <= 5; i++) {
             const chartWrapper = document.createElement('div');
             chartWrapper.className = 'chart-wrapper';
@@ -202,11 +110,39 @@ function updateCharts(chartData, selectedUserId = null) {
     console.log("Charts created");
 }
 
-// Function to convert data to CSV
+// Modify the updateUserList function
+function updateUserList(data) {
+    const userList = document.getElementById('userList');
+    if (!userList) {
+        console.error('User list element not found');
+        return;
+    }
+    userList.innerHTML = '';
+    
+    // Sort users by box number
+    const sortedUsers = Object.keys(data).sort((a, b) => {
+        const boxA = parseInt(userIdToBox[a]?.split(' ')[1]) || Infinity;
+        const boxB = parseInt(userIdToBox[b]?.split(' ')[1]) || Infinity;
+        return boxA - boxB;
+    });
+
+    for (const userId of sortedUsers) {
+        const li = document.createElement('li');
+        const boxNumber = userIdToBox[userId] || userId; // Fallback to userId if not in mapping
+        li.textContent = boxNumber;
+        li.onclick = () => {
+            updateCharts(processDataForCharts(data), userId);
+            toggleDrawer(); // Close drawer after selection
+        };
+        userList.appendChild(li);
+    }
+}
+
+// Modify the convertToCSV function to use box numbers
 function convertToCSV(data) {
     const headers = [
         'Timestamp', 
-        'User ID', 
+        'Box Number', 
         '2 Day Watering', 
         '4 Day Watering', 
         '6 Day Watering', 
@@ -217,13 +153,15 @@ function convertToCSV(data) {
 
     for (const userId in data) {
         const readings = data[userId].readings;
+        const boxNumber = userIdToBox[userId] || userId; // Fallback to userId if not in mapping
+        
         for (const timestamp in readings) {
             const reading = readings[timestamp];
             const [day, month, year, hour, minute] = timestamp.split('-');
             const formattedTimestamp = `${year}-${month}-${day} ${hour}:${minute}`;
             const row = [
                 formattedTimestamp,
-                userId,
+                boxNumber,
                 reading.sensor1,
                 reading.sensor2,
                 reading.sensor3,
@@ -236,141 +174,3 @@ function convertToCSV(data) {
 
     return csvContent;
 }
-
-// Function to trigger download
-function downloadCSV(csvContent) {
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-    const link = document.createElement('a');
-    if (link.download !== undefined) {
-        const url = URL.createObjectURL(blob);
-        link.setAttribute('href', url);
-        link.setAttribute('download', 'soil_moisture_data.csv');
-        link.style.visibility = 'hidden';
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-    }
-}
-
-// Function to update user list in drawer
-function updateUserList(data) {
-    const userList = document.getElementById('userList');
-    if (!userList) {
-        console.error('User list element not found');
-        return;
-    }
-    userList.innerHTML = '';
-    for (const userId in data) {
-        const li = document.createElement('li');
-        li.textContent = userId;
-        li.onclick = () => {
-            updateCharts(processDataForCharts(data), userId);
-            toggleDrawer(); // Close drawer after selection
-        };
-        userList.appendChild(li);
-    }
-}
-
-// Function to toggle drawer
-function toggleDrawer() {
-    const drawer = document.querySelector('.drawer');
-    const mainContent = document.querySelector('.main-content');
-    if (drawer && mainContent) {
-        drawer.classList.toggle('open');
-        mainContent.style.marginLeft = drawer.classList.contains('open') ? '200px' : '50px';
-    }
-}
-
-// Event listeners setup after DOM is loaded
-document.addEventListener('DOMContentLoaded', async () => {
-    console.log("DOM content loaded, setting up event listeners...");
-
-    // Update charts button
-    const updateButton = document.querySelector('.controls');
-    if (updateButton) {
-        updateButton.addEventListener('click', async () => {
-            console.log("Update charts button clicked");
-            try {
-                await signInAnonymouslyFunc();
-                allData = await fetchData();
-                if (allData) {
-                    const chartData = processDataForCharts(allData);
-                    updateCharts(chartData);
-                    updateUserList(allData);
-                    const authStatus = document.querySelector('.auth-status');
-                    if (authStatus) authStatus.textContent = 'Charts updated!';
-                }
-            } catch (error) {
-                console.error('Error:', error);
-                const authStatus = document.querySelector('.auth-status');
-                if (authStatus) authStatus.textContent = 'Error updating charts.';
-            }
-        });
-    }
-
-    // Download CSV button
-    const headerElement = document.querySelector('.header');
-    if (headerElement) {
-        headerElement.addEventListener('click', async (e) => {
-            if (e.target.textContent.includes('Download CSV')) {
-                console.log("Download CSV button clicked");
-                try {
-                    await signInAnonymouslyFunc();
-                    if (allData) {
-                        const csvContent = convertToCSV(allData);
-                        downloadCSV(csvContent);
-                        const authStatus = document.querySelector('.auth-status');
-                        if (authStatus) authStatus.textContent = 'CSV downloaded!';
-                    }
-                } catch (error) {
-                    console.error('Error:', error);
-                    const authStatus = document.querySelector('.auth-status');
-                    if (authStatus) authStatus.textContent = 'Error downloading CSV.';
-                }
-            }
-        });
-    }
-
-    // Drawer toggle
-    const drawer = document.querySelector('.drawer');
-    if (drawer) {
-        drawer.addEventListener('click', (e) => {
-            if (e.target.textContent.includes('☰')) {
-                toggleDrawer();
-            }
-        });
-    }
-
-    // Initial load
-    try {
-        await signInAnonymouslyFunc();
-        allData = await fetchData();
-        if (allData) {
-            const chartData = processDataForCharts(allData);
-            updateCharts(chartData);
-            updateUserList(allData);
-        }
-    } catch (error) {
-        console.error('Error during initial load:', error);
-        const authStatus = document.querySelector('.auth-status');
-        if (authStatus) authStatus.textContent = 'Error loading initial data.';
-    }
-});
-
-// Monitor auth state changes
-onAuthStateChanged(auth, (user) => {
-    const authStatus = document.querySelector('.auth-status');
-    if (!authStatus) return;
-
-    if (user) {
-        console.log('User is signed in:', user.uid);
-        authStatus.textContent = 'Authenticated';
-        authStatus.style.color = '#2ecc71';
-    } else {
-        console.log('User is signed out');
-        authStatus.textContent = 'Not authenticated';
-        authStatus.style.color = '#e74c3c';
-    }
-});
-
-console.log("Script loaded");
