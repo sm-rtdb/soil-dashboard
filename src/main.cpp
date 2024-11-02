@@ -53,7 +53,7 @@ String parentPath;
 String timestamp;
 String firebaseStatus = "Waiting...";
 
-const unsigned long firebaseInterval = 600000;  // interval to send to RTDB (10 minutes)
+const unsigned long firebaseInterval = 900000;  // interval to send to RTDB (10 minutes)
 unsigned long previousFirebaseMillis = 0;
 unsigned long lastFirebaseAttempt = 0;
 
