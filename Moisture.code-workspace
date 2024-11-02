@@ -1,0 +1,18 @@
+{
+	"folders": [
+		{
+			"path": "E:/Moisture"
+		},
+		{
+			"name": "mois",
+			"path": "."
+		},
+		{
+			"name": "mois-calibration",
+			"path": "../mois-calibration"
+		}
+	],
+	"settings": {
+		"liveServer.settings.multiRootWorkspaceName": "Moisture"
+	}
+}
